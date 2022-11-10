@@ -1,11 +1,16 @@
-#EDA on MD monitoring data
+---
+title: "Initial SOAR Monitoring Data Exploration"
+author: "Jordanna Barley"
+date: "11/9/2022"
+output: word_document
+---
 
+```{r setup, include=FALSE}
 require(here)
 require(tidyverse)
 require(readxl)
 require(plotrix)
 
-#Maryland####
 data<-read_excel(here('Data','MD','SOAR Monitoring Raw Data.xlsx'), sheet = 'DSOysData')
 str(data)
 data$Rep<- factor(data$Rep)
@@ -13,162 +18,9 @@ data$Substrate<-factor(data$Substrate)
 data$OysSize<-factor(data$OysSize)
 data$OysterStatus<- factor(data$OysterStatus)
 
-data %>% 
-  ggplot(aes(x=Length))+
-  geom_histogram()+
-  theme_classic()
-
-data$Length
-
-data %>% 
-  mutate(Rep=case_when(Rep=='001' ~ '1', 
-                       Rep=='002' ~ '2',
-                       Rep=='003' ~ '3', 
-                       Rep=='004' ~ '4', 
-                       Rep=='005' ~ '5', 
-                       Rep=='006' ~ '6', 
-                       Rep=='007' ~ '7', 
-                       Rep=='008' ~ '8', 
-                       Rep=='009' ~ '9', 
-                       Rep=='010' ~ '10')) %>% 
-  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
-  group_by(Rep) %>% 
-  count(OysterStatus) %>% 
-  ggplot(aes(x=Rep, y=n, fill=OysterStatus))+
-  geom_bar(stat = 'identity', position='dodge')+
-  theme_classic()+
-  ylab('Count')+
-  xlab('Replicate number')+
-  ggtitle('MD Survival')+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=18), 
-        plot.title = element_text(size=22),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=14))
-
-#Survival###
-data %>% 
-  mutate(Rep=case_when(Rep=='001' ~ '1', 
-                       Rep=='002' ~ '2',
-                       Rep=='003' ~ '3', 
-                       Rep=='004' ~ '4', 
-                       Rep=='005' ~ '5', 
-                       Rep=='006' ~ '6', 
-                       Rep=='007' ~ '7', 
-                       Rep=='008' ~ '8', 
-                       Rep=='009' ~ '9', 
-                       Rep=='010' ~ '10')) %>% 
-  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
-  group_by(Rep) %>% 
-  count(OysterStatus) %>% 
-  group_by(Rep) %>% 
-  mutate(prop = n/sum(n)) %>% 
-  ggplot(aes(x=Rep, y=prop))+
-  geom_point(size=2)+
-  facet_wrap(~OysterStatus)+
-  theme_bw()+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=18), 
-        plot.title = element_text(size=22),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=14))+
-  labs(x='Replicate Number',
-       y='Proportion of total oyster sample')
-  
-
-#same as above, but just with live oysters
-data %>% 
-  mutate(Rep=case_when(Rep=='001' ~ '1', 
-                       Rep=='002' ~ '2',
-                       Rep=='003' ~ '3', 
-                       Rep=='004' ~ '4', 
-                       Rep=='005' ~ '5', 
-                       Rep=='006' ~ '6', 
-                       Rep=='007' ~ '7', 
-                       Rep=='008' ~ '8', 
-                       Rep=='009' ~ '9', 
-                       Rep=='010' ~ '10')) %>% 
-  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
-  group_by(Rep) %>% 
-  count(OysterStatus) %>% 
-  group_by(Rep) %>% 
-  mutate(prop = n/sum(n)) %>% 
-  filter(OysterStatus=='Live') %>% 
-  ggplot(aes(x=Rep, y=prop))+
-  geom_point(size=2.5)+
-  theme_classic()+
-  geom_hline(aes(yintercept=mean(prop)), color='red', size=1)+
-  geom_hline(aes(yintercept=(mean(prop)+std.error(prop))), lty=2)+
-  geom_hline(aes(yintercept=(mean(prop)-std.error(prop))), lty=2)+
-  ylab('Proportion of live oysters')+
-  xlab('Replicate number')+
-  ggtitle('MD survival')+
-  labs(caption = 'Proportion of live oysters collected from each replicate bag. Red line denotes the mean across replicates, dashed lines denote SEM.')+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=20))   
-  
-#same as abovve but with proportion of dead oysters
-data %>% 
-  mutate(Rep=case_when(Rep=='001' ~ '1', 
-                       Rep=='002' ~ '2',
-                       Rep=='003' ~ '3', 
-                       Rep=='004' ~ '4', 
-                       Rep=='005' ~ '5', 
-                       Rep=='006' ~ '6', 
-                       Rep=='007' ~ '7', 
-                       Rep=='008' ~ '8', 
-                       Rep=='009' ~ '9', 
-                       Rep=='010' ~ '10')) %>% 
-  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
-  group_by(Rep) %>% 
-  count(OysterStatus) %>% 
-  group_by(Rep) %>% 
-  mutate(prop = n/sum(n)) %>% 
-  filter(OysterStatus=='Box') %>% 
-  ggplot(aes(x=Rep, y=prop))+
-  geom_point(size=2.5)+
-  theme_classic()+
-  geom_hline(aes(yintercept=mean(prop)), color='red', size=1)+
-  geom_hline(aes(yintercept=(mean(prop)+std.error(prop))), lty=2)+
-  geom_hline(aes(yintercept=(mean(prop)-std.error(prop))), lty=2)+
-  ylab('Proportion of dead oysters')+
-  xlab('Replicate number')+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=20)) 
-
-#Size###
-data %>% 
-  drop_na(Length) %>% 
-  ggplot(aes(x=Length))+
-  geom_histogram()+
-  geom_vline(aes(xintercept = mean(Length)), color='blue', size=1)+
-  ylab('Count')+
-  theme_classic()+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=20))
-  
-#New York####
 ny22<-read_excel(here('Data','NY','BOP Governors Is SOAR Oysters.xlsx'), sheet = '2022 data')
-str(ny22)  
 ny21<-read_excel(here('Data','NY','BOP Governors Is SOAR Oysters.xlsx'), sheet ='pre-deployment')
-str(ny21)
 
-#survival
-ny22$sample_number<-factor(ny22$sample_number)
-ny22 %>% 
-  filter(sample_number=='1') %>% 
-  mutate(prop_live=count_live/25) %>% 
-  ggplot(aes(x=bag_number, y=prop_live))+
-  geom_bar(stat='identity')+
-  labs(x='Replicate Number', 
-       y='Proportion of live oysters',
-       title = 'Governors Island- Survival')+
-  theme_classic()+
-  theme(axis.text = element_text(size = 14), 
-        axis.title = element_text(size=20))
-
-##just size first
-#predeployment
 
 ny21 %>%                                          
   ggplot(aes(x=bag_number, y=shell_height_mm))+
@@ -214,6 +66,132 @@ ny_size<-ny_sd %>%                              #joining the mean and sd data fo
   select(bag_number, year, mean, sd) 
   
 ny_size$year<-factor(ny_size$year)
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+```
+
+## What is in this document: 
+Because we are still waiting for a fair amount of the data to come in, I picked sites where I knew we had sufficient data that would be good for a presentation. What I have here are very early plots and I would like some feeddback if this is what is needed for the upcoming Builder's meeting. 
+
+### Maryland Monitoring Data
+The Maryland monitoring was done by taking a sample of oysters from replicate quadrats, catagorizing them as live or box, and collecting size data. At present, I do not have pre-deployment data. I have computed some simple stats and produced some plots: 
+
+
+```{r maryland, echo=FALSE, warning=FALSE}
+data %>% 
+  mutate(Rep=case_when(Rep=='001' ~ '1', 
+                       Rep=='002' ~ '2',
+                       Rep=='003' ~ '3', 
+                       Rep=='004' ~ '4', 
+                       Rep=='005' ~ '5', 
+                       Rep=='006' ~ '6', 
+                       Rep=='007' ~ '7', 
+                       Rep=='008' ~ '8', 
+                       Rep=='009' ~ '9', 
+                       Rep=='010' ~ '10')) %>% 
+  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
+  group_by(Rep) %>% 
+  count(OysterStatus) %>% 
+  ggplot(aes(x=Rep, y=n, fill=OysterStatus))+
+  geom_bar(stat = 'identity', position='dodge')+
+  theme_classic()+
+  ylab('Count')+
+  xlab('Replicate number')+
+  ggtitle('MD Survival')+
+  theme(axis.text = element_text(size = 14), 
+        axis.title = element_text(size=18), 
+        plot.title = element_text(size=22),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=14))
+
+data %>% 
+  mutate(Rep=case_when(Rep=='001' ~ '1', 
+                       Rep=='002' ~ '2',
+                       Rep=='003' ~ '3', 
+                       Rep=='004' ~ '4', 
+                       Rep=='005' ~ '5', 
+                       Rep=='006' ~ '6', 
+                       Rep=='007' ~ '7', 
+                       Rep=='008' ~ '8', 
+                       Rep=='009' ~ '9', 
+                       Rep=='010' ~ '10')) %>% 
+  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
+  group_by(Rep) %>% 
+  count(OysterStatus) %>% 
+  group_by(Rep) %>% 
+  mutate(prop = n/sum(n)) %>% 
+  ggplot(aes(x=Rep, y=prop))+
+  geom_point(size=2)+
+  facet_wrap(~OysterStatus)+
+  theme_bw()+
+  theme(axis.text = element_text(size = 14), 
+        axis.title = element_text(size=18), 
+        plot.title = element_text(size=22),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=14))+
+  labs(x='Replicate Number',
+       y='Proportion of total oyster sample')
+  
+data %>% 
+  mutate(Rep=case_when(Rep=='001' ~ '1', 
+                       Rep=='002' ~ '2',
+                       Rep=='003' ~ '3', 
+                       Rep=='004' ~ '4', 
+                       Rep=='005' ~ '5', 
+                       Rep=='006' ~ '6', 
+                       Rep=='007' ~ '7', 
+                       Rep=='008' ~ '8', 
+                       Rep=='009' ~ '9', 
+                       Rep=='010' ~ '10')) %>% 
+  mutate(Rep = fct_relevel(Rep, '1','2','3','4','5','6','7','8','9','10')) %>%  
+  group_by(Rep) %>% 
+  count(OysterStatus) %>% 
+  group_by(Rep) %>% 
+  mutate(prop = n/sum(n)) %>% 
+  filter(OysterStatus=='Live') %>% 
+  ggplot(aes(x=Rep, y=prop))+
+  geom_point(size=2.5)+
+  theme_classic()+
+  geom_hline(aes(yintercept=mean(prop)), color='red', size=1)+
+  geom_hline(aes(yintercept=(mean(prop)+std.error(prop))), lty=2)+
+  geom_hline(aes(yintercept=(mean(prop)-std.error(prop))), lty=2)+
+  ylab('Proportion of live oysters')+
+  xlab('Replicate number')+
+  ggtitle('MD survival')+
+  labs(caption = 'Proportion of live oysters collected from each replicate bag. Red line denotes the mean across replicates, dashed lines denote SEM.')+
+  theme(axis.text = element_text(size = 14), 
+        axis.title = element_text(size=20),
+        plot.caption = element_text(size=14)) 
+
+data %>% 
+  drop_na(Length) %>% 
+  ggplot(aes(x=Length))+
+  geom_histogram()+
+  geom_vline(aes(xintercept = mean(Length)), color='blue', size=1)+
+  ylab('Count')+
+  xlab('Oyster Length (mm)')+
+  labs(caption = 'Histogram of oyster lengths for all replicates. Blue line denotes the mean.')+
+  theme_classic()+
+  theme(axis.text = element_text(size = 14), 
+        axis.title = element_text(size=20), 
+        plot.caption = element_text(size=14))
+```
+
+###New York Monitoring Data-Governor's Island
+The data from this site were collected by taking a subset of 25 oysters from each replicate bag deployed in the water. We have size data for both pre- and post-deployment of the SOAR oysters from Govvernor's Island. The data do not really suggest significant growth across all replicates. I will compute growth, however I have not gotten there yet and wanted to share what I had so far. I can also compute some statistics to see if there is significant growth, though given the large standard deviations, there does not seem to be much difference in size between the two years. 
+
+```{r New York data, echo=FALSE, warning=FALSE}
+ny22 %>% 
+  filter(sample_number=='1') %>% 
+  mutate(prop_live=count_live/25) %>% 
+  ggplot(aes(x=bag_number, y=prop_live))+
+  geom_bar(stat='identity')+
+  labs(x='Replicate Number', 
+       y='Proportion of live oysters',
+       title = 'Governors Island- Survival')+
+  theme_classic()+
+  theme(axis.text = element_text(size = 14), 
+        axis.title = element_text(size=20))
+
 ny_size %>% 
   ggplot(aes(x=bag_number, y=mean, color=year))+
   geom_point(position=position_dodge(width=0.2,preserve = 'total'), size=2)+
@@ -228,20 +206,4 @@ ny_size %>%
         plot.title = element_text(size=22),
         legend.text = element_text(size=14),
         legend.title = element_text(size=14))
-
-#growth
-
-  
-
-#color-blind friendly pallette
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-ny_size %>% 
-  ggplot(aes(x=bag_number, y=mean_size_21, color='red'))+
-  geom_jitter(width=0.2, size=2)+
-  geom_linerange(aes(ymax=mean_size_21+sd_size_21, ymin=mean_size_21-sd_size_21))+
-  geom_jitter(data=ny_size, aes(x=bag_number, y=mean_size_22, color='blue'), size=2, width=0.2)+
-  geom_linerange(aes(ymax=mean_size_22+sd_size_22, ymin=mean_size_22-sd_size_22))+
-  scale_color_manual(labels = c('After deployment', 'Pre-deployment'), values = c('#E69F00','#009E73'))
-  
-
-
+```
