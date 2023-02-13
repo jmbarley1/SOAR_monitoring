@@ -1,0 +1,160 @@
+---
+title: "SOAR monitoring Data Analysis"
+author: "Jordanna Barley"
+date: "1/22/2023"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(here)
+require(readxl)
+require(plotrix)
+require(RColorBrewer)
+require(AICcmodavg)
+require(lme4)
+require(multcomp)
+require(tidyverse)
+
+source(here('R Code', '00_environmental_vars.R'))
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+```
+
+# Intoduction
+
+The purpose of this document is to go over the exploratory data analysis that I have done for the SOAR monitoring data. First, exploratory data analysis is done to visualize the data and ensure that there does not seem to be any mistakes that would results from incorrect data entry. Second, this step allows you start to recognize patterns in the variation in the data, which can sometimes allude to significant differences amoung treatments when statistical models are run. Thrid, this step allows you to make decisions about the type of model that you should run based on the observed patterns in the data visualization. Although you should already have a good idea of what type of models you are going to run based on the type of data that you collected, it is important to look at what the error/variation in your data look like, as this can change how you account for this error in your statistical model. Therefore, I have included plots and graphs to visualize the data collected from all monitoring sites that collected usable data in a variety of helpful combinations so that we can think about what to do going forward with this analysis.  
+
+## Survival
+
+First, I looked at survival of the SOAR oysters deployed. I calculated proportional survival as the proportion of live oysters collected to the total number of oysters collected during the monitoring. Except for the two sites in New York which deployed bags of oysters, we can't really calculate actual survival of SOAR oysters from each site. This is because we can't say for sure what percentage of SOAR oysters were found/collected during monitoring in many sites because they deployed oysters at already estabolished oyster restoration sites. Therefore, I have calucalted the proportion of live oysters to total oysters as a proxy to show the relative abundance of live to dead oysters at each site. This way, proportional survival can be compared across sites and states no matter the deployment and sampling protocol. 
+
+Here, we are looking for any differences between sites, collection agencies, and states. It is really important to know if there are survival differences so we can be informed when thinking about sites for SOAR 2.0. Also, and maybe more importantly, survival is one of the metrics took look at for the efficacy of the SOAR program. If survival was generally high across the board, we can confidently say that this approach should be sucessful in most restoration sites. However, if there is some variation in survival between sites or states, then we might need to be more strategic about what sites are chosen and be more dilligent about the data that are collected. 
+
+
+```{r survival a, echo=FALSE, dpi=300, fig.width=5, fig.height=3, warning=FALSE, error=FALSE,message=FALSE, fig.cap="Fig. 1. Histograms of Proportional survival by state. Blue line denotes mean."}
+data %>%                                    
+  filter(!str_detect(site_name, "CO"), 
+         survival_prop!="NaN", 
+         survival_prop!='NA') %>% 
+  ggplot(aes(x=survival_prop))+
+  geom_histogram()+
+  facet_wrap(~state, scales = 'free_y')+
+  geom_vline(data=data %>% 
+               filter(!str_detect(site_name, "CO"), 
+                      survival_prop!="NaN", 
+                      survival_prop!='NA') %>% 
+               group_by(state) %>% 
+               summarize(mean_sur=mean(survival_prop)), aes(xintercept = mean_sur),col='blue',size=1)+
+  labs(y='Count', 
+       x='Proportion Survival')
+```
+
+In Fgure 1, you can see the distribution of proportional survival for each state. Most states don't seem to have very much variation, except for Massachusetts. While it seems that most sits and replicates had gerater than 50% survival, this is in contrast to the other states that had relatively much smaller distributions and a mean of proportional survival closer to 75%.
+
+```{r survival b, echo=FALSE, dpi=300, fig.width=8, fig.height=5, warning=FALSE, message=FALSE, error=FALSE, fig.cap="Fig. 2. String plots of proportional survival by collection agency and state. Different color data points denote sites within each collection agency."}
+data %>%                                    #by collection_agency state
+  filter(!str_detect(site_name, "CO")) %>% 
+  group_by(state, collection_agency, site_name, replicate) %>% 
+  summarize(survival_prop=mean(survival_prop)) %>% 
+  ggplot(aes(x=collection_agency, y=survival_prop, color=site_name))+
+  geom_jitter(alpha=0.4,position = 
+                position_jitterdodge(jitter.width = 1, jitter.height = 0.1, dodge.width = 0.7))+
+  facet_wrap(~state, scales ='free_x')+
+  scale_y_continuous(limits = c(0, 1), oob = scales::squish)+
+  theme_bw()+
+  theme(legend.position = 'none')+
+  labs(y='Proportaional survival', 
+       x='Collection Agency')
+```
+
+If we break proportional survival down further by collection agency and site (Fig. 2),we can see mmore specifically that even some sites within each collection agency had more variation than others. This is to be expected- not only are the data collected by different people, in different states and sites- each site can largely vary in temperature, salinity, water flow velocity, predation, disease prevelance, etc. 
+
+### Preliminary Survival Statistics
+
+I ran some prelininary models with the survival data. Because of the type of data and the dependent variables we have (state, collection agency, and restoration site), I ran several models with different combinations of the dependent variables being included. This is done because we want to make sure that the model that we use sufficiently explains the variation in our data well. I then use a technique to analyze which model explains the most variation in the data. This essentially means that I am looking for the best-fit model. You can think of putting a line of 'best fit' on a graph in excel as an example of what I am doing with the monitoring data. I have provided more details of the methods that I used at the end of this report.
+
+The dependent variables that we are using are all highly collinear with each other. This means that variation that we see in survival by state, collection, agency, and restoration site are too similar. When you run a model that includes very collinear variables together, it is hard to trust if it is the 'best fit' because this could be from the collinear dependent variables OR that the model explains the variation in the data sufficiently. Therefore, we want to minimize the collinearity of variables included in the model. Below is the list of models that I ran: 
+```{r survival mods, message=FALSE, include=TRUE, warnings=FALSE}
+data<-data %>% 
+  mutate(box_survival_mod=case_when(box_survival=="Live" ~ 1, TRUE ~ 0))
+survival_mod1<- glm(box_survival_mod~state, data=data, family = 'binomial')
+survival_mod2<- glm(box_survival_mod~collection_agency, data=data, family = 'binomial')
+survival_mod3<- glm(box_survival_mod~site_name, data=data, family = 'binomial')
+survival_mod4<- glm(box_survival_mod~state+collection_agency, data=data, family = 'binomial')
+survival_mod5<- glm(box_survival_mod~state+site_name, data=data, family = 'binomial')
+survival_mod6<- glm(box_survival_mod~collection_agency+site_name, data=data, family = 'binomial')
+survival_mod7<- glm(box_survival_mod~state+collection_agency+site_name, data=data, family = 'binomial')
+```
+
+Below is the AIC model selection table for the above list of models: 
+
+```{r survival AIC, echo=FALSE, warning=FALSE, message=FALSE}
+data<-data %>% 
+  mutate(box_survival_mod=case_when(box_survival=="Live" ~ 1, TRUE ~ 0))
+
+
+survival_mod_list<-list(survival_mod1<- glm(box_survival_mod~state, data=data, family = 'binomial'),
+survival_mod2= glm(box_survival_mod~collection_agency, data=data, family = 'binomial'),
+survival_mod3= glm(box_survival_mod~site_name, data=data, family = 'binomial'),
+survival_mod4= glm(box_survival_mod~state+collection_agency, data=data, family = 'binomial'),
+survival_mod5= glm(box_survival_mod~state+site_name, data=data, family = 'binomial'),
+survival_mod6= glm(box_survival_mod~collection_agency+site_name, data=data, family = 'binomial'),
+survival_mod7= glm(box_survival_mod~state+collection_agency+site_name, data=data, family = 'binomial'))
+
+aictab(survival_mod_list)
+```
+
+The model that had the most support is model 3, which just has restoration site as the only independent variable: 
+
+```{r susrvival mod summary table, echo=FALSE}
+summary(glm(box_survival_mod~site_name, data=data, family = 'binomial'))
+```
+
+I have been unable thus far to run an honest difference test- this was taking longer than 30 minutes to run and I needed to move on. I am going to try and run it tonight.
+
+## Growth
+
+Next, I calculated growth for the states that provided me with pre-deployment size data. Growth was calculated by averaging the pre-deployment size data and subtracting that from the sizes of the individual oysters from each site collected for monitoring. Because we are not able to track the of each individual oyster over time, these data are a bit messy. For example, there are many growth data points that are negative because that individual was measured at smaller than the average pre-deployment size for that site. We can think through how to interpret these data together when we meet; I think it can be informative to look at the distribution of growth across sites and states as well as what the mean is. For example, if the mean is around zero, we might interpret that as very little growth overall, even though it is unlikely there was no growth at all. We can also look at the mean size of pre-deployment and post-deployent oysters and compare the distributions of the two. Thiis might end up being more informative but I figured it would be best to provide both so that we can discuss both options.
+
+```{r growth a, echo=FALSE, warning=FALSE, message=FALSE, dpi=300, fig.width=5, fig.height=5, fig.cap='Fig. 3. Histograms of growth by state. Growth was calculcated as the the post-deployment size minus the average pre-deployment size for each site. Blue line denotes mean growth.'}
+data %>% 
+  filter(state!='NH') %>% 
+  ggplot(aes(x=growth))+
+  geom_histogram()+
+  geom_vline(data=data %>% 
+               filter(!str_detect(site_name, "CO"), state!='NH"') %>% 
+               drop_na(growth) %>% 
+               group_by(state) %>% 
+               summarize(mean_growth=mean(growth)), aes(xintercept = mean_growth),col='blue',size=1)+
+  facet_wrap(~state)+
+  theme_bw()+
+  labs(x='Growth (mm)', 
+       y='Count')
+```
+
+Washington, Maryland and Massachusetts oyster growth is centered around zero- as I mentionedd before, we could interpret this metric as no average growth for that site (Fig. 3). New Jersey seems to be skewed in the positive direction, which could mean overall growth for the sites in the state. Lastly, Ney York growth has a bimodal distribution, it is possible that one site is dragging the mean for the entire state down.
+
+```{r growth b, echo=FALSE, warning=FALSE, message=FALSE, dpi=300, fig.width=5, fig.height=5, fig.cap="Fig. 4. String plots of growth by state and collection agency. Different colors denote different restoration sites and the black lines are at zero."}
+data %>% 
+  filter(state!='NH') %>% 
+  drop_na(growth) %>% 
+  ggplot(aes(x=collection_agency, y=growth, color=site_name))+
+  geom_jitter(position = position_jitterdodge())+
+  facet_wrap(~state, scales = 'free_x')+
+  theme_bw()+
+  theme(legend.position = 'none')+
+  geom_hline(yintercept = 0)+
+  labs(x='Collection Agency', 
+       y='Growth')
+```
+
+It is clear that th Hudson Rier Trust sites are what is causing the bimodal distribution that is seen in Fig. 3 (Fig. 4). 
+
+I meant to evaluate growth by testing the differences in the average sizes of pre-deplyment and post-deployment but I ran out of time. Because of that, I have not comlpeted the statistical analysis of growth yet, but shuld be able to by the time we meet next!
+
+## More detailed statistical methods
+
+For survival, I ran generalizedd linear models with a binomial error distribution. I ran one model for each single dependent variable on its own (state, collection agency, restoration site) in addition to additive models for each combination of the variables. I ran a Variation Inflation Factor (VIF) that basically said this dependent variables are very collinear. I also compared all of the models that I ran using Akiake Information Criterion (AIC). Three of the models had the exact same corrected AIC value and collectively they were weighted at 90% for model selection. A fourth had a very similar corrected AIC, and was about 2 delta AIC units away from the other three models. All for of these models included restoration site as an independent variable, which is way I included the note above about variation between sites. 
+
