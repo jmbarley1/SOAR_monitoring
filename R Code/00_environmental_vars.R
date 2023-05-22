@@ -60,4 +60,4 @@ data<-data %>%                                              #adding needed colum
 
 
 #read in New Hampshire and Massachusetts recruitment data
-recruit<-read_excel(here('Data','NH_MA_recruitment.xlsx'))
+recruit<-read_excel(here('Data','NH','NH_MA_recruitment.xlsx'))
