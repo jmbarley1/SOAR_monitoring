@@ -1,45 +1,42 @@
-#SOAR monitoring environmental variavbles
+#####SOAR monitoring environmental variables####
 
 require(here)
 require(tidyverse)
 require(readxl)
 
-data<-read_excel(here('Data','01_SOAR_monitoring_data_master copy.xlsx'), 
-                 col_types = c('guess',
+#read in master data sheet
+data<-read_excel(here('Data','01_SOAR_monitoring_data_master copy.xlsx'),   #Argument "col_types" needed because for some reason, 
+                 col_types = c('guess',                                     #R needed to be told what type of data each column is
                                'guess',
-                               'guess',
-                               'guess',
-                               'guess',
-                               'guess',
-                               'guess',
-                               'skip',
-                               'skip',
-                               'skip',
-                               'skip',
-                               'skip',
-                               'skip',
                                'guess',
                                'numeric',
                                'numeric',
-                               'numeric',
-                               'skip',
-                               'skip',
-                               'numeric',
-                               'skip',
-                               'numeric',
+                               'date',
+                               'date',
                                'numeric',
                                'guess',
                                'numeric',
-                               'skip',
-                               'skip',
                                'guess',
-                               'numeric',
                                'guess',
                                'numeric',
                                'numeric',
                                'numeric',
                                'numeric',
-                               'guess',
+                               'skip',
+                               'numeric',
+                               'numeric',
+                               'skip',
+                               'numeric',
+                               'skip',
+                               'skip',
+                               'skip',
+                               'numeric',
+                               'skip',
+                               'numeric',
+                               'skip',
+                               'numeric',
+                               'skip',
+                               'skip',
                                'numeric',
                                'numeric',
                                'skip'))
@@ -52,14 +49,15 @@ data$site_name<- factor(data$site_name)
 data$sampling_method<-factor(data$sampling_method)
 data$replicate<- factor(as.character(data$replicate))
 data$box_survival<- factor(data$box_survival)
-data$size_before_error_metric<- factor(data$size_before_error_metric)
-data$size_metric<- factor(data$size_metric)
-data$substrate<- factor(data$substrate)
 data$SOAR_recruit<- as.numeric(as.character(data$SOAR_recruit))
 
 
-data<-data %>% 
-  mutate(survival_prop=number_live/total_collected, 
-         growth= size_after-size_before)
+data<-data %>%                                              #adding needed columns:
+  mutate(survival_prop=number_live/total_collected,         #proportional survival of SOAR oysters
+         growth= size_after-size_before,                    #Average "growth" of oysters at each site based on the average size of oysters at deployment
+         recruit_density= SOAR_recruit*quadrat_size_m2,     #Density of recruitment at each site
+         live_density_m2= number_live*quadrat_size_m2)      #density of live SOAR oysters
 
 
+#read in New Hampshire and Massachusetts recruitment data
+recruit<-read_excel(here('Data','NH_MA_recruitment.xlsx'))
