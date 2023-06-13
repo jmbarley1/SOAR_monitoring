@@ -18,6 +18,9 @@ source(here('R Code', '00_environmental_vars.R'))
 #load color-blind friendly color palette
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
+colors<-13
+cbPalette <- colorRampPalette(c("#56B4E9", "#F0E442"))(colors)
+
 str(data)
 
 
@@ -54,13 +57,30 @@ data %>%
   facet_wrap(~state, scales ='free_x')+
   theme(legend.position = 'none')
 
+#Proportional survival bar graph by state
+data %>% 
+  filter(!str_detect(site_name, "CO"), 
+         survival_prop!="NaN", 
+         survival_prop!='NA') %>% 
+  group_by(state, collection_agency) %>% 
+  summarize(survival_prop=mean(survival_prop*100)) %>% 
+  ggplot(aes(x=state, y=survival_prop, fill=collection_agency))+
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme_light()+
+  theme(legend.position = 'none', 
+        axis.title = element_text(size = 24), 
+        axis.text = element_text(size = 20))+
+  labs(x='State', 
+       y='Average Percent Survival')+
+  scale_fill_manual(values=cbPalette)
+
 #Proportional survival by collection agency and state
 data %>%                                    
   #filter(!str_detect(site_name, "CO")) %>% 
   group_by(state, collection_agency, site_name, replicate) %>% 
   summarize(survival_prop=mean(survival_prop)) %>% 
   ggplot(aes(x=collection_agency, y=survival_prop, color=site_name))+
-  geom_jitter(alpha=0.7,position = 
+   geom_jitter(alpha=0.7,position = 
                 position_jitterdodge(jitter.width = 1, jitter.height = 0.1, dodge.width = 0.7))+
   facet_wrap(~state, scales ='free_x')+
   scale_y_continuous(limits = c(0, 1), oob = scales::squish)+
@@ -153,6 +173,28 @@ md %>%
   labs(y='Proportaional survival', 
        x='Restoration Site')
 
+colors<-3
+cbPalette <- colorRampPalette(c("#56B4E9", "#F0E442"))(colors)
+range(md$survival_prop)
+range(test$survival_prop)
+
+md %>% 
+  mutate(site=case_when(startsWith(site_name, 'eastern') ~ 'Eastern Bay',                           #changing site names
+                        startsWith(site_name, 'nan') ~ 'Nanticoke River', 
+                        startsWith(site_name, 'st') ~ 'St. Marys River'), 
+         percent_surv=survival_prop*100) %>%
+  group_by(state, collection_agency, site) %>% 
+  summarize(percent_surv=mean(percent_surv)) %>%                                                  #making sure that we report one average prop. survival per quadrat
+  ggplot(aes(x=site, y=percent_surv, fill=site))+
+  geom_bar(stat = 'identity')+
+  scale_fill_manual(values=cbPalette)+
+  scale_y_continuous(limits=c(0,100))+
+  theme_bw()+
+  theme(legend.position = 'none', 
+        axis.text = element_text(size=20),
+        axis.title  =  element_text(size=26))+
+  labs(x='Site',
+       y='Oyster Percent Survival')
 
 #MA and NH
 
@@ -197,6 +239,29 @@ data %>%
   labs(y='Proportaional survival', 
        x='Restoration Site')
 
+colors<-4
+cbPalette <- colorRampPalette(c("#56B4E9", "#F0E442"))(colors)
+data %>% 
+  filter(state=='MA'|
+           state=="NH") %>% 
+  mutate(site=case_when(startsWith(site_name, 'bourne') ~ 'Bourne', 
+                        startsWith(site_name, 'fair') ~ 'Fairhaven', 
+                        startsWith(site_name, 'mart') ~ 'Marthas Vineyard', 
+                        startsWith(site_name, 'nan') ~ 'Nannie Island'), 
+         percent_surv=survival_prop*100) %>%
+  drop_na(percent_surv) %>% 
+  group_by(state, collection_agency, site) %>% 
+  summarize(percent_surv=mean(percent_surv)) %>%                                                  #making sure that we report one average prop. survival per quadrat
+  ggplot(aes(x=site, y=percent_surv, fill=site))+
+  geom_bar(stat = 'identity')+
+  scale_fill_manual(values=cbPalette)+
+  scale_y_continuous(limits=c(0,100))+
+  theme_bw()+
+  theme(legend.position = 'none', 
+        axis.text = element_text(size=20),
+        axis.title  =  element_text(size=26))+
+  labs(x='Site',
+       y='Oyster Percent Survival')
 #NY and NJ proportional survival
 data$collection_agency<-as.character(data$collection_agency)
 
@@ -244,6 +309,35 @@ data %>%
         legend.title = element_text(size=15))+
   labs(y='Proportaional survival', 
        x='Restoration Site')
+
+colors<-7
+cbPalette <- colorRampPalette(c("#56B4E9", "#F0E442"))(colors)
+data %>% 
+  filter(state=='NY'|
+           state=="NJ") %>% 
+  mutate(site=factor(case_when(startsWith(collection_agency, 'BOP') ~ 'Governors Island', 
+                               startsWith(collection_agency, 'hud') ~ 'Hudson River', 
+                               startsWith(collection_agency, 'long') ~ 'Long Island', 
+                               startsWith(collection_agency, 'oyster') ~ 'Oyster Bay', 
+                               startsWith(collection_agency, 'sedge') ~ 'Sedge Reef', 
+                               startsWith(collection_agency, 'baykeeper') ~ 'Earle', 
+                               startsWith(collection_agency, 'stock') ~ 'Tuckerton Reef'), 
+                     levels=c('Governors Island','Hudson River', 'Long Island','Oyster Bay', 
+                              'Sedge Reef', 'Earle', 'Tuckerton Reef')),
+         percent_surv=survival_prop*100)%>%
+  drop_na(percent_surv) %>% 
+  group_by(state, collection_agency, site) %>% 
+  summarize(percent_surv=mean(percent_surv)) %>%                                                  #making sure that we report one average prop. survival per quadrat
+  ggplot(aes(x=site, y=percent_surv, fill=site))+
+  geom_bar(stat = 'identity')+
+  scale_fill_manual(values=cbPalette)+
+  scale_y_continuous(limits=c(0,100))+
+  theme_bw()+
+  theme(legend.position = 'none', 
+        axis.text = element_text(size=20),
+        axis.title  =  element_text(size=26))+
+  labs(x='Site',
+       y='Oyster Percent Survival')
 
 #Just MA proportional survival by site and collection agency
 data %>% 
@@ -395,6 +489,27 @@ data %>%
   theme(legend.position = 'none')+
   labs(y='Proportaional survival', 
        x='Restoration Site')
+
+colors<-2
+cbPalette <- c("#56B4E9", "#009E73")
+data %>% 
+  filter(state=='WA') %>% 
+  mutate(site=case_when(startsWith(collection_agency, 'john_adams') ~ 'Baron Point', 
+                        startsWith(collection_agency, 'squaxin') ~ 'Squaxin Island'), 
+         percent_surv=survival_prop*100) %>% 
+  drop_na(percent_surv) %>% 
+  group_by(state, collection_agency, site) %>% 
+  summarize(percent_surv=mean(percent_surv)) %>%                                                  #making sure that we report one average prop. survival per quadrat
+  ggplot(aes(x=site, y=percent_surv, fill=site))+
+  geom_bar(stat = 'identity')+
+  scale_fill_manual(values=cbPalette)+
+  scale_y_continuous(limits=c(0,100))+
+  theme_bw()+
+  theme(legend.position = 'none', 
+        axis.text = element_text(size=20),
+        axis.title  =  element_text(size=26))+
+  labs(x='Site',
+       y='Oyster Percent Survival')
 
 #proportional survival for all sites within each state. Color denotes sites
 data %>% 
@@ -696,12 +811,20 @@ data %>%
   geom_histogram()+
   facet_wrap(~state)
 
+ 
 data %>% 
   filter(state %in% c('MA','NY')) %>%
   drop_na(recruit_density) %>% 
   ggplot(aes(x=collection_agency, y=recruit_density))+
   geom_boxplot()+
   facet_wrap(~state, scales = 'free_y')
+
+data %>% 
+  filter(state %in% c('MA','NY')) %>%
+  drop_na(recruit_density) %>% 
+  ggplot(aes(x=state, y=recruit_density))+
+  geom_bar(stat = 'identity')
+  
 
 #MA
 data$site_name<-as.character(data$site_name)
@@ -732,8 +855,26 @@ data %>%
         axis.title = element_text(size=18), 
         legend.position = 'none')+
   labs(x='Restoartion site', 
-       y=bquote('Recruitment density'~(m^2)))
+       y=bquote('Recruitment density'~(m^-2)))
        
+colors<-3
+cbPalette <- colorRampPalette(c("#F0E442","#56B4E9"))(colors)
+data %>% 
+  filter(state=='MA') %>% 
+  mutate(site=case_when(startsWith(site_name, 'bourne') ~ 'Bourne', 
+                        startsWith(site_name, 'fair') ~ 'Fairhaven', 
+                        startsWith(site_name, 'mart') ~ 'Marthas Vineyard')) %>% 
+  group_by(state, collection_agency, site, site_name, replicate) %>% 
+  summarize(recruit_density_mean=mean(recruit_density)) %>% 
+  ggplot(aes(x=site, y=recruit_density_mean, fill=site))+
+  geom_bar(stat = 'identity')+
+  theme_bw()+
+  theme(axis.text = element_text(size=20), 
+        axis.title = element_text(size=26), 
+        legend.position = 'none')+
+  labs(x='Restoartion site', 
+       y=bquote('Recruitment density'~(m^-2)))+
+  scale_fill_manual(values = cbPalette)
 
 #NH
 data %>% 
@@ -764,13 +905,13 @@ str(recruit)
 recruit %>% 
   filter(year>2007) %>% 
   ggplot(aes(x=year, y=recruitment))+
-  geom_point(size=3)+
-  theme_classic()+
-  geom_line(size=1)+
-  theme(axis.title = element_text(size = 16), 
-        axis.text = element_text(size=14))+
+  #geom_point(size=3)+
+  theme_bw()+
+  geom_line(size=1, color="#0072B2")+
+  theme(axis.title = element_text(size = 26), 
+        axis.text = element_text(size=20))+
   labs(x='Year', 
-       y='Recruitment Densisty')
+       y='Juvenile Oyster Count')
 
 #MD recruitment density
 data %>% 
@@ -804,7 +945,28 @@ data %>%
         axis.title = element_text(size=18), 
         legend.position = 'none')+
   labs(x='Restoartion site', 
-       y=bquote('Recruitment density'~(m^2)))
+       y=bquote('Recruitment density'~(m^-2)))
+
+colors<-3
+cbPalette <- colorRampPalette(c("#F0E442","#56B4E9"))(colors)
+data %>% 
+  filter(state=='MD', 
+         !str_detect(site_name, "CO")) %>% 
+  mutate(site=case_when(startsWith(site_name, 'eastern') ~ 'Eastern Bay', 
+                        startsWith(site_name, 'nan') ~ 'Nanticoke River', 
+                        startsWith(site_name, 'st') ~ 'St. Marys River')) %>%  
+  drop_na(recruit_density) %>% 
+  group_by(state, collection_agency, site, site_name, replicate) %>% 
+  summarize(recruit_density_mean=mean(recruit_density)) %>% 
+  ggplot(aes(x=site, y=recruit_density_mean, fill=site))+
+  geom_bar(stat='identity')+
+  theme_bw()+
+  theme(axis.text = element_text(size=20), 
+        axis.title = element_text(size=26), 
+        legend.position = 'none')+
+  labs(x='Restoartion site', 
+       y=bquote('Recruitment density'~(m^-2)))+
+  scale_fill_manual(values = cbPalette)
 
 
 #Size------------------------------------------------------------------------------------------
@@ -898,6 +1060,7 @@ data %>%
 
 #Maps---------------------------------------------------------------------------------------------
 
+
 #practice
 #maps package
 usa <- map_data("usa")
@@ -919,6 +1082,32 @@ ggplot(data = new_england) +
   geom_point(data=data %>% 
                filter(state=='NH'|
                         state=='MA'), aes(x=lon, y=lat), color = 'red', size=3)+ 
+  scale_x_continuous(expand = c(0,0)) + scale_y_continuous(expand = c(0,0)) +
+  theme(line = element_blank(),
+        text = element_blank(),
+        title = element_blank(),
+        panel.background = element_blank())
+
+#just MA
+ma<-subset(states, region %in% c('massachusetts'))
+ggplot(data = ma) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "grey", color = "black") + 
+  coord_fixed(xlim = c(-72,-69.5), ylim = c(41, 43.5))+
+  geom_point(data=data %>% 
+               filter(state=='MA'), aes(x=lon, y=lat), color = 'red', size=3)+ 
+  scale_x_continuous(expand = c(0,0)) + scale_y_continuous(expand = c(0,0)) +
+  theme(line = element_blank(),
+        text = element_blank(),
+        title = element_blank(),
+        panel.background = element_blank())
+
+#just NH
+nh<-subset(states, region %in% c('new hampshire'))
+ggplot(data = nh) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "grey", color = "black") + 
+  coord_fixed(xlim = c(-72,-69.5), ylim = c(42, 46))+
+  geom_point(data=data %>% 
+               filter(state=='NH'), aes(x=lon, y=lat), color = 'red', size=3)+ 
   scale_x_continuous(expand = c(0,0)) + scale_y_continuous(expand = c(0,0)) +
   theme(line = element_blank(),
         text = element_blank(),

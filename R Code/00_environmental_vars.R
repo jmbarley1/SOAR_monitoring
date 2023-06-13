@@ -7,7 +7,7 @@ require(readxl)
 #read in master data sheet
 data<-read_excel(here('Data','01_SOAR_monitoring_data_master copy.xlsx'),   #Argument "col_types" needed because for some reason, 
                  col_types = c('guess',                                     #R needed to be told what type of data each column is
-                               'guess',
+                               'guess',                                     #And I wanted to skip a couple columns 
                                'guess',
                                'numeric',
                                'numeric',
@@ -55,7 +55,7 @@ data$SOAR_recruit<- as.numeric(as.character(data$SOAR_recruit))
 data<-data %>%                                              #adding needed columns:
   mutate(survival_prop=number_live/total_collected,         #proportional survival of SOAR oysters
          growth= size_after-size_before,                    #Average "growth" of oysters at each site based on the average size of oysters at deployment
-         recruit_density= SOAR_recruit*quadrat_size_m2,     #Density of recruitment at each site
+         recruit_density= SOAR_recruit*quadrat_size_m2,     #Density of recruitment at each site (those that collected these data)
          live_density_m2= number_live*quadrat_size_m2)      #density of live SOAR oysters
 
 
